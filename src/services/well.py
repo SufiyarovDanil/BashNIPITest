@@ -8,17 +8,17 @@ from database import make_apg_connection
 
 async def well_create(
     well_name: str,
-    well_head: tuple[float, float],
-    md: list[float],
-    x: list[float],
-    y: list[float],
-    z: list[float]
+    well_head: tuple[np.float32, np.float32],
+    md: np.ndarray[np.float32],
+    x: np.ndarray[np.float32],
+    y: np.ndarray[np.float32],
+    z: np.ndarray[np.float32]
 ) -> UUID:
-    if not (len(md) == len(x) == len(y) == len(z)):
+    if not (md.size == x.size == y.size == z.size):
         raise exc.ArrayDifferentSizesException()
     if well_head[0] != x[0] or well_head[1] != y[0]:
         raise exc.InconsistentHeadAndFirstNodeException()
-
+    
     trajectory: np.ndarray = np.array([(i[0], i[1], i[2]) for i in np.column_stack((x, y, z))], dtype='f,f,f')
     conn = await make_apg_connection()
 
@@ -73,9 +73,9 @@ async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
     if return_trajectory:
         transparent_trajectory: np.ndarray = np.array([[i['x'], i['y'], i['z']] for i in query['trajectory']]).T
         result['MD'] = query['measured_depth']
-        result['X'] = transparent_trajectory[0]
-        result['Y'] = transparent_trajectory[1]
-        result['Z'] = transparent_trajectory[2]
+        result['X'] = transparent_trajectory[0].tolist()
+        result['Y'] = transparent_trajectory[1].tolist()
+        result['Z'] = transparent_trajectory[2].tolist()
 
     return result
 
