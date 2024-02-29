@@ -5,13 +5,9 @@ from utils.well_generator import generate_random_well
 
 
 def add_wells():
-    wells = [generate_random_well(50) for _ in range(1)]
+    wells = [generate_random_well(100_000) for _ in range(1)]
 
     for well in wells:
-        if not (well.md.size == well.x.size == well.y.size == well.z.size):
-            print('arrays dont have same size')
-            print(f'md: {well.md.size}, x: {well.x.size}, y: {well.y.size}, z: {well.z.size}')
-        
         well.x[0] = well.head[0]
         well.y[0] = well.head[1]
         
@@ -22,10 +18,10 @@ def add_wells():
                 "params": {
                     "name": well.name,
                     "head": well.head,
-                    "MD": well.md.tolist(),
-                    "X": well.x.tolist(),
-                    "Y": well.y.tolist(),
-                    "Z": well.z.tolist()
+                    "MD": well.md,
+                    "X": well.x,
+                    "Y": well.y,
+                    "Z": well.z
                 }
             }
         )
@@ -48,6 +44,20 @@ def test_request_well_at():
     print(resp.text)
 
 
+def test_request_well_get():
+    resp = requests.post(
+        'http://localhost:8070/api/well.get',
+        json={
+            'method': 'well.get',
+            'params': {
+                'uuid': '1ebe3f2e-9add-4352-87b3-4e3b8d3bcdf8',
+                'return_trajectory': True
+            }
+        }
+    )
+    print(resp.elapsed)
+
 if __name__ == '__main__':
-    add_wells()
+    # add_wells()
+    test_request_well_get()
     # test_request_well_at()
