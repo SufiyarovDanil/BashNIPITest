@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
@@ -26,20 +27,22 @@ async def create(well: WellCreateRequest) -> JSONResponse:
     }
 
     try:
-        created_well_uuid: str = await well_services.well_create(
+        created_well_uuid = await well_services.well_create(
             well.params.name,
             well.params.head,
-            np.array(well.params.MD),
-            np.array(well.params.X),
-            np.array(well.params.Y),
-            np.array(well.params.Z)
+            well.params.MD,
+            well.params.X,
+            well.params.Y,
+            well.params.Z
         )
     except exc.WellAlreadyExistsException:
         result['error'] = { 'message': 'Well already exists!' }
     except exc.ArrayDifferentSizesException:
         result['error'] = { 'message': 'Sizes of MD, X, Y and Z must be equal!' }
+    except exc.InconsistentHeadAndFirstNodeException:
+        result['error'] = { 'message': 'Well head and trajectory are inconsistent!' }
     else:
-        result['data'] = { 'uuid': created_well_uuid }
+        result['data'] = { 'uuid': str(created_well_uuid) }
 
     return JSONResponse(result)
 

@@ -1,3 +1,4 @@
+from uuid import UUID
 import numpy as np
 import asyncpg.exceptions as apg_exc
 
@@ -8,16 +9,16 @@ from database import make_apg_connection
 async def well_create(
     well_name: str,
     well_head: tuple[float, float],
-    md: np.ndarray,
-    x: np.ndarray,
-    y: np.ndarray,
-    z: np.ndarray
-) -> str:
-    if not (md.size == x.size == y.size == z.size):
+    md: list[float],
+    x: list[float],
+    y: list[float],
+    z: list[float]
+) -> UUID:
+    if not (len(md) == len(x) == len(y) == len(z)):
         raise exc.ArrayDifferentSizesException()
-    if not (well_head[0] == x[0] and well_head[1] == y[0]):
+    if well_head[0] != x[0] or well_head[1] != y[0]:
         raise exc.InconsistentHeadAndFirstNodeException()
-    
+
     trajectory: np.ndarray = np.array([(i[0], i[1], i[2]) for i in np.column_stack((x, y, z))], dtype='f,f,f')
     conn = await make_apg_connection()
 
@@ -34,11 +35,11 @@ async def well_create(
     
     query = await conn.fetchrow('SELECT pk_id FROM well WHERE name = $1', well_name)
     await conn.close()
+    
+    return query['pk_id']
 
-    return str(query['pk_id'])
 
-
-async def well_remove(uuid: str) -> None:
+async def well_remove(uuid: UUID) -> None:
     conn = await make_apg_connection()
     stmt = await conn.execute(
         'DELETE FROM well WHERE pk_id = $1',
@@ -50,7 +51,7 @@ async def well_remove(uuid: str) -> None:
         raise exc.WellNotFoundException()
 
 
-async def well_get(uuid: str, return_trajectory: bool = False) -> dict:
+async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
     conn = await make_apg_connection()
     columns: str = 'name, head, measured_depth, trajectory' if return_trajectory else 'name, head'
     
@@ -79,7 +80,7 @@ async def well_get(uuid: str, return_trajectory: bool = False) -> dict:
     return result
 
 
-async def well_at(uuid: str, md: float) -> tuple[float, float, float]:
+async def well_at(uuid: UUID, md: float) -> tuple[float, float, float]:
     well: dict = await well_get(uuid, True)
 
     x: float = np.interp([md], well['MD'], well['X'])[0]

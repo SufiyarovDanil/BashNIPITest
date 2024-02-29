@@ -9,10 +9,10 @@ from pydantic import BaseModel, Field
 class Well(BaseModel):
     name: str = Field(...)
     head: Tuple[float, float] = Field(...)
-    md: np.ndarray = Field(...)
-    x: np.ndarray = Field(...)
-    y: np.ndarray = Field(...)
-    z: np.ndarray = Field(...)
+    md: np.ndarray[float] = Field(...)
+    x: np.ndarray[float] = Field(...)
+    y: np.ndarray[float] = Field(...)
+    z: np.ndarray[float] = Field(...)
 
     class Config:
         arbitrary_types_allowed = True

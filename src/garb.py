@@ -1,15 +1,19 @@
 import requests
+import numpy as np
 
 from utils.well_generator import generate_random_well
 
 
 def add_wells():
-    wells = [generate_random_well(100) for _ in range(10)]
+    wells = [generate_random_well(50) for _ in range(1)]
 
     for well in wells:
         if not (well.md.size == well.x.size == well.y.size == well.z.size):
             print('arrays dont have same size')
             print(f'md: {well.md.size}, x: {well.x.size}, y: {well.y.size}, z: {well.z.size}')
+        
+        well.x[0] = well.head[0]
+        well.y[0] = well.head[1]
         
         resp = requests.post(
             'http://localhost:8070/api/well.create',
@@ -45,5 +49,5 @@ def test_request_well_at():
 
 
 if __name__ == '__main__':
-    # add_wells()
-    test_request_well_at()
+    add_wells()
+    # test_request_well_at()
