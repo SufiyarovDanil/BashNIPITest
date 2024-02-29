@@ -29,11 +29,11 @@ async def create(well: WellCreateRequest) -> JSONResponse:
     try:
         created_well_uuid = await well_services.well_create(
             well.params.name,
-            well.params.head,
-            well.params.MD,
-            well.params.X,
-            well.params.Y,
-            well.params.Z
+            np.float32(well.params.head),
+            np.array(well.params.MD, dtype=np.float32),
+            np.array(well.params.X, dtype=np.float32),
+            np.array(well.params.Y, dtype=np.float32),
+            np.array(well.params.Z, dtype=np.float32)
         )
     except exc.WellAlreadyExistsException:
         result['error'] = { 'message': 'Well already exists!' }
