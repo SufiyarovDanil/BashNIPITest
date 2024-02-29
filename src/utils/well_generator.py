@@ -9,13 +9,10 @@ from pydantic import BaseModel, Field
 class Well(BaseModel):
     name: str = Field(...)
     head: Tuple[float, float] = Field(...)
-    md: np.ndarray[float] = Field(...)
-    x: np.ndarray[float] = Field(...)
-    y: np.ndarray[float] = Field(...)
-    z: np.ndarray[float] = Field(...)
-
-    class Config:
-        arbitrary_types_allowed = True
+    md: list[float] = Field(...)
+    x: list[float] = Field(...)
+    y: list[float] = Field(...)
+    z: list[float] = Field(...)
 
 
 def generate_random_well(trajectory_nodes: int) -> Well:
@@ -35,7 +32,7 @@ def generate_random_well(trajectory_nodes: int) -> Well:
     y = B * np.sin(phi)
     z = k * md
 
-    return Well(name=name, head=head, md=md, x=x, y=y, z=z)
+    return Well(name=name, head=head, md=md.tolist(), x=x.tolist(), y=y.tolist(), z=z.tolist())
 
 
 if __name__ == "__main__":
