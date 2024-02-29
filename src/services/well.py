@@ -19,24 +19,32 @@ async def well_create(
     if well_head[0] != x[0] or well_head[1] != y[0]:
         raise exc.InconsistentHeadAndFirstNodeException()
     
-    trajectory: np.ndarray = np.array([(i[0], i[1], i[2]) for i in np.column_stack((x, y, z))], dtype='f,f,f')
     conn = await make_apg_connection()
 
     try:
         await conn.execute(
-            'INSERT INTO well(pk_id, name, head, measured_depth, trajectory) VALUES (gen_random_uuid(), $1, $2, $3, $4)',
+            'INSERT INTO well(pk_id, name, head) VALUES (gen_random_uuid(), $1, $2)',
             well_name,
-            well_head,
-            md,
-            trajectory
+            well_head
+        )
+
+        well_id = await conn.fetchval(
+            'SELECT pk_id FROM well WHERE name = $1',
+            well_name
+        )
+        
+        trajectory_data = [(i[0], i[1], i[2], i[3], well_id) for i in np.column_stack((md, x, y, z))]
+        
+        await conn.executemany(
+            f'INSERT INTO trajectory(md, x, y, z, fk_well_id) VALUES ($1, $2, $3, $4, $5)',
+            trajectory_data
         )
     except apg_exc.UniqueViolationError:
         raise exc.WellAlreadyExistsException()
     
-    query = await conn.fetchrow('SELECT pk_id FROM well WHERE name = $1', well_name)
     await conn.close()
-    
-    return query['pk_id']
+
+    return well_id
 
 
 async def well_remove(uuid: UUID) -> None:
