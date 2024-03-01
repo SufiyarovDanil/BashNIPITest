@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, UUID4
+from pydantic import BaseModel, Field, UUID4, computed_field
 from typing import Any, Sequence
 
 
@@ -25,6 +25,7 @@ class WellRemoveSchema(WellSchema):
     
     params: WellRemoveParamsSchema
 
+
 class WellGetSchema(WellSchema):
     class WellGetParamsSchema(BaseModel):
         uuid: UUID4
@@ -43,11 +44,17 @@ class WellAtSchema(WellSchema):
 
 class WellOutputSchema(BaseModel):
     data: dict[str, Any] | None = Field(default=None)
-    # error: dict[str, str] | None = Field(default=None)
+
+    def __init__(self, data: dict[str, Any] | None = None, error: dict[str, str] | None = None):
+        super().__init__(data=data, error=error)
+        self.data = data
+        self.error = error
+    
+    @computed_field
     @property
     def error(self) -> dict[str, str] | None:
-        return None
+        return self._error
     
     @error.setter
-    def error(self, message: str | None) -> None:
-        self.error = { 'message': message }
+    def error(self, value: str | None) -> None:
+        self._error = value if value is None else { 'message': value }
