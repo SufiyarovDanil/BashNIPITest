@@ -32,7 +32,7 @@ async def well_create(
             'SELECT pk_id FROM well WHERE name = $1',
             well_name
         )
-        
+
         trajectory_data = [(i[0], i[1], i[2], i[3], well_id) for i in np.column_stack((md, x, y, z))]
         
         await conn.executemany(
@@ -61,11 +61,12 @@ async def well_remove(uuid: UUID) -> None:
 
 async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
     conn = await make_apg_connection()
-    columns: str = 'name, head, measured_depth, trajectory' if return_trajectory else 'name, head'
+    columns: str = 'name, head, md, x, y, z' if return_trajectory else 'name, head'
     
-    # elapsed about 300ms
-    query = await conn.fetchrow(
-        f'SELECT {columns} FROM well WHERE pk_id = $1',
+    # elapsed about 300ms (version 1)
+    # elapsed about 730ms (version 2)
+    query = await conn.fetch(
+        f'SELECT {columns} FROM well {'JOIN trajectory ON fk_well_id = $1' if return_trajectory else ''} WHERE well.pk_id = $1',
         uuid
     )
     await conn.close()
@@ -74,16 +75,16 @@ async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
         raise exc.WellNotFoundException()
     
     result: dict = {
-        'name': query['name'],
-        'head': (query['head'].x, query['head'].y)
+        'name': query[0]['name'],
+        'head': (query[0]['head'].x, query[0]['head'].y)
     }
-
+    
     if return_trajectory:
-        transparent_trajectory: np.ndarray = np.array([[i['x'], i['y'], i['z']] for i in query['trajectory']]).T
-        result['MD'] = query['measured_depth']
-        result['X'] = transparent_trajectory[0].tolist()
-        result['Y'] = transparent_trajectory[1].tolist()
-        result['Z'] = transparent_trajectory[2].tolist()
+        transparent_trajectory: np.ndarray = np.array([[i['md'], i['x'], i['y'], i['z']] for i in query]).T
+        result['MD'] = transparent_trajectory[0].tolist()
+        result['X'] = transparent_trajectory[1].tolist()
+        result['Y'] = transparent_trajectory[2].tolist()
+        result['Z'] = transparent_trajectory[3].tolist()
 
     return result
 
