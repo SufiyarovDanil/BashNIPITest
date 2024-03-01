@@ -1,14 +1,14 @@
-from pydantic import BaseModel, Field, UUID4
+from pydantic import BaseModel, Field, UUID4, computed_field
 from typing import Any, Sequence
 
 
-class WellModel(BaseModel):
+class WellSchema(BaseModel):
     method: str
     params: Any
 
 
-class WellCreateRequest(WellModel):
-    class WellCreateParams(BaseModel):
+class WellCreateSchema(WellSchema):
+    class WellCreateParamsSchema(BaseModel):
         name: str
         head: tuple[float, float] = Field(default=(0.0, 0.0), min_length=2, max_length=2)
         MD: Sequence = Field(default=[0.0, 0.0], min_length=1)
@@ -16,26 +16,45 @@ class WellCreateRequest(WellModel):
         Y: Sequence = Field(default=[0.0, 0.0], min_length=1)
         Z: Sequence = Field(default=[0.0, 0.0], min_length=1)
     
-    params: WellCreateParams
+    params: WellCreateParamsSchema
 
 
-class WellRemoveRequest(WellModel):
-    class WellRemoveParams(BaseModel):
+class WellRemoveSchema(WellSchema):
+    class WellRemoveParamsSchema(BaseModel):
         uuid: UUID4
     
-    params: WellRemoveParams
+    params: WellRemoveParamsSchema
 
-class WellGetRequest(WellModel):
-    class WellGetParams(BaseModel):
+
+class WellGetSchema(WellSchema):
+    class WellGetParamsSchema(BaseModel):
         uuid: UUID4
         return_trajectory: bool
     
-    params: WellGetParams
+    params: WellGetParamsSchema
 
 
-class WellAtRequest(WellModel):
-    class WellGetParams(BaseModel):
+class WellAtSchema(WellSchema):
+    class WellGetParamsSchema(BaseModel):
         uuid: UUID4
         MD: float
     
-    params: WellGetParams
+    params: WellGetParamsSchema
+
+
+class WellOutputSchema(BaseModel):
+    data: dict[str, Any] | None = Field(default=None)
+
+    def __init__(self, data: dict[str, Any] | None = None, error: dict[str, str] | None = None):
+        super().__init__(data=data, error=error)
+        self.data = data
+        self.error = error
+    
+    @computed_field
+    @property
+    def error(self) -> dict[str, str] | None:
+        return self._error
+    
+    @error.setter
+    def error(self, value: str | None) -> None:
+        self._error = value if value is None else { 'message': value }
