@@ -71,7 +71,7 @@ async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
     )
     await conn.close()
 
-    if query is None:
+    if len(query) == 0:
         raise exc.WellNotFoundException()
     
     result: dict = {
