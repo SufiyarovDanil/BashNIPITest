@@ -4,10 +4,10 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 from schemas.well import (
-    WellCreateRequest,
-    WellRemoveRequest,
-    WellGetRequest,
-    WellAtRequest
+    WellCreateSchema,
+    WellRemoveSchema,
+    WellGetSchema,
+    WellAtSchema
 )
 import services.well as well_services
 import services.exceptions as exc
@@ -20,7 +20,7 @@ router: APIRouter = APIRouter(
 
 
 @router.post('/well.create')
-async def create(well: WellCreateRequest) -> JSONResponse:
+async def create(well: WellCreateSchema) -> JSONResponse:
     result: dict = {
         'data': None,
         'error': None
@@ -48,7 +48,7 @@ async def create(well: WellCreateRequest) -> JSONResponse:
 
 
 @router.post('/well.remove')
-async def remove(well: WellRemoveRequest) -> JSONResponse:
+async def remove(well: WellRemoveSchema) -> JSONResponse:
     result: dict = {
         'data': None,
         'error': None
@@ -63,7 +63,7 @@ async def remove(well: WellRemoveRequest) -> JSONResponse:
 
 
 @router.post('/well.get')
-async def get(well: WellGetRequest) -> JSONResponse:
+async def get(well: WellGetSchema) -> JSONResponse:
     result: dict = {
         'data': None,
         'error': None
@@ -83,7 +83,7 @@ async def get(well: WellGetRequest) -> JSONResponse:
 
 
 @router.post('/well.at')
-async def at(well: WellAtRequest) -> JSONResponse:
+async def at(well: WellAtSchema) -> JSONResponse:
     result: dict = {
         'data': None,
         'error': None
