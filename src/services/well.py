@@ -1,6 +1,7 @@
 from uuid import UUID
 import numpy as np
 import asyncpg.exceptions as apg_exc
+import time
 
 from . import exceptions as exc
 from database import db_instance
@@ -30,15 +31,29 @@ async def well_create(
                     well_head
                 )
 
-                well_id = await conn.fetchval(
+                well_id: UUID = await conn.fetchval(
                     'SELECT pk_id FROM well WHERE name = $1',
                     well_name
                 )
 
-                trajectory_data = [(i[0], i[1], i[2], i[3], well_id) for i in np.column_stack((md, x, y, z))]
-        
+                trajectory_data = [(i[0], i[1], i[2], i[3]) for i in np.column_stack((md, x, y, z))]
+
+                await conn.execute(
+                    f'''
+                    CREATE TABLE trajectory_{well_id.hex}
+                    (
+                        pk_id bigserial,
+                        md double precision NOT NULL,
+                        x double precision NOT NULL,
+                        y double precision NOT NULL,
+                        z double precision NOT NULL,
+                        PRIMARY KEY (pk_id)
+                    )
+                    '''
+                )
+
                 await conn.executemany(
-                    f'INSERT INTO trajectory(md, x, y, z, fk_well_id) VALUES ($1, $2, $3, $4, $5)',
+                    f'INSERT INTO trajectory_{well_id.hex}(md, x, y, z) VALUES ($1, $2, $3, $4)',
                     trajectory_data
                 )
             except apg_exc.UniqueViolationError:
@@ -57,35 +72,39 @@ async def well_remove(uuid: UUID) -> None:
                 uuid
             )
 
-    if stmt == 'DELETE 0':
-        raise exc.WellNotFoundException()
+            if stmt == 'DELETE 0':
+                raise exc.WellNotFoundException()
+            
+            await conn.execute(f'DROP TABLE trajectory_{uuid.hex}')
+            
 
 
 async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
     pool = await db_instance.get_connection_pool()
-
+    start = time.time()
     async with pool.acquire() as conn:
         async with conn.transaction():
-            columns: str = 'name, head, md, x, y, z' if return_trajectory else 'name, head'
-            query = await conn.fetch(
-                f'''
-                SELECT {columns}
-                FROM well
-                {'JOIN trajectory ON fk_well_id = $1' if return_trajectory else ''}
-                WHERE well.pk_id = $1''',
+            query = await conn.fetchrow(
+                'SELECT name, head FROM well WHERE pk_id = $1',
                 uuid
             )
 
-    if len(query) == 0:
-        raise exc.WellNotFoundException()
+            if not query:
+                raise exc.WellNotFoundException()
+
+            if return_trajectory:
+                trajectory = await conn.fetch(f'SELECT * FROM trajectory_{uuid.hex}')
+            
+    print('elapsed time:', time.time() - start)
+
     
     result: dict = {
-        'name': query[0]['name'],
-        'head': (query[0]['head'].x, query[0]['head'].y)
+        'name': query['name'],
+        'head': (query['head'].x, query['head'].y)
     }
     
     if return_trajectory:
-        transparent_trajectory: np.ndarray = np.array([[i['md'], i['x'], i['y'], i['z']] for i in query]).T
+        transparent_trajectory: np.ndarray = np.array([[i['md'], i['x'], i['y'], i['z']] for i in trajectory]).T
         result['MD'] = transparent_trajectory[0].tolist()
         result['X'] = transparent_trajectory[1].tolist()
         result['Y'] = transparent_trajectory[2].tolist()
