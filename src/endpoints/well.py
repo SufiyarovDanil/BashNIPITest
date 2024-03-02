@@ -31,12 +31,12 @@ async def create(well: WellCreateSchema) -> WellOutputSchema:
             np.array(well.params.Y, dtype=np.float32),
             np.array(well.params.Z, dtype=np.float32)
         )
-    except exc.WellAlreadyExistsException:
-        output.error = 'Well already exists!'
-    except exc.ArrayDifferentSizesException:
-        output.error = 'Sizes of MD, X, Y and Z must be equal!'
-    except exc.InconsistentHeadAndFirstNodeException:
-        output.error = 'Well head and trajectory are inconsistent!'
+    except exc.WellAlreadyExistsException as e:
+        output.error = str(e)
+    except exc.ArrayDifferentSizesException as e:
+        output.error = str(e)
+    except exc.InconsistentHeadAndFirstNodeException as e:
+        output.error = str(e)
     else:
         output.data = { 'uuid': str(created_well_uuid) }
 
@@ -49,8 +49,8 @@ async def remove(well: WellRemoveSchema) -> WellOutputSchema:
 
     try:
         await well_services.well_remove(well.params.uuid)
-    except exc.WellNotFoundException:
-        output.error = 'Well not found!'
+    except exc.WellNotFoundException as e:
+        output.error = str(e)
     
     return output
 
@@ -64,8 +64,8 @@ async def get(well: WellGetSchema) -> WellOutputSchema:
             well.params.uuid,
             well.params.return_trajectory
         )
-    except exc.WellNotFoundException:
-        output.error = 'Well not found!'
+    except exc.WellNotFoundException as e:
+        output.error = str(e)
     else:
         output.data = queried_well
 
@@ -81,8 +81,8 @@ async def at(well: WellAtSchema) -> WellOutputSchema:
             well.params.uuid,
             well.params.MD
         )
-    except exc.WellNotFoundException:
-        output.error = 'Well not found!'
+    except exc.WellNotFoundException as e:
+        output.error = str(e)
     else:
         output.data = {
             'X': coordinates[0],

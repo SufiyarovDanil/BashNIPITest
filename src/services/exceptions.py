@@ -1,14 +1,18 @@
 class WellNotFoundException(Exception):
-    pass
+    def __init__(self):
+        super().__init__('Well not found!')
 
 
 class WellAlreadyExistsException(Exception):
-    pass
+    def __init__(self):
+        super().__init__('Well already exists!')
 
 
 class InconsistentHeadAndFirstNodeException(Exception):
-    pass
+    def __init__(self):
+        super().__init__('Well head and trajectory are inconsistent!')
 
 
 class ArrayDifferentSizesException(Exception):
-    pass
+    def __init__(self):
+        super().__init__('Sizes of MD, X, Y and Z must be equal!')
