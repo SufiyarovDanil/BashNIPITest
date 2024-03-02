@@ -1,11 +1,5 @@
 import asyncpg
 from asyncpg.connection import Connection
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine
-)
 
 from config import (
     DB_NAME,
@@ -16,17 +10,33 @@ from config import (
 )
 
 
-__POSTGRES_URI: str = f'postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
-__ALCHEMY_URI: str = f'postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
-
-
 async def make_apg_connection() -> Connection:
-    return await asyncpg.connect(__POSTGRES_URI)
+    return await asyncpg.connect(
+        host=DB_HOST,
+        port=DB_PORT,
+        user=DB_USER,
+        password=DB_PASS,
+        database=DB_NAME
+    )
 
 
-async_engine: AsyncEngine = create_async_engine(
-    url=__ALCHEMY_URI,
-    echo=True
-)
+class Database:
+    def __init__(self):
+        self._connection_pool = None
+    
+    async def get_connection_pool(self) -> asyncpg.Pool:
+        if not self._connection_pool:
+            self._connection_pool = await asyncpg.create_pool(
+                host=DB_HOST,
+                port=DB_PORT,
+                user=DB_USER,
+                password=DB_PASS,
+                database=DB_NAME,
+                min_size=1,
+                max_size=10
+            )
+        
+        return self._connection_pool
 
-async_session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(async_engine)
+
+db_instance: Database = Database()
