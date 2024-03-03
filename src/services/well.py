@@ -1,4 +1,5 @@
 from uuid import UUID
+import time
 import numpy as np
 import asyncpg.exceptions as apg_exc
 
@@ -56,7 +57,7 @@ async def well_remove(uuid: UUID) -> None:
         async with conn.transaction():
             stmt = await conn.execute('CALL delete_well($1)', uuid)
 
-    if stmt == 'DELETE 0':
+    if stmt != 'CALL':
         raise exc.WellNotFoundException()
 
 
@@ -65,18 +66,16 @@ async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
 
     async with pool.acquire() as conn:
         async with conn.transaction():
-            columns: str = 'name, head, md, x, y, z' if return_trajectory else 'name, head'
-            # about 400 - 450 ms
-            start = time.time()
+            # about 30 ms
             query = await conn.fetch(
                 f'''
-                SELECT {columns}
+                SELECT {'name, head, md, x, y, z' if return_trajectory else 'name, head'}
                 FROM well
                 {'JOIN trajectory ON fk_well_id = $1' if return_trajectory else ''}
-                WHERE well.pk_id = $1''',
+                WHERE well.pk_id = $1
+                ''',
                 uuid
             )
-            print('elapsed time', time.time() - start)
 
     if not query:
         raise exc.WellNotFoundException()
@@ -87,11 +86,11 @@ async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
     }
     
     if return_trajectory:
-        transparent_trajectory: np.ndarray = np.array([[i['md'], i['x'], i['y'], i['z']] for i in query]).T
-        result['MD'] = transparent_trajectory[0].tolist()
-        result['X'] = transparent_trajectory[1].tolist()
-        result['Y'] = transparent_trajectory[2].tolist()
-        result['Z'] = transparent_trajectory[3].tolist()
+        transparent_trajectory: np.ndarray = np.array([[i['x'], i['y'], i['z']] for i in query]).T
+        result['MD'] = query[0]['md']
+        result['X'] = transparent_trajectory[0]
+        result['Y'] = transparent_trajectory[1]
+        result['Z'] = transparent_trajectory[2]
 
     return result
 
