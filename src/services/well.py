@@ -1,12 +1,10 @@
 from uuid import UUID
-import time
 import numpy as np
 import asyncpg.exceptions as apg_exc
 
 from . import exceptions as exc
 from database import db_instance
 
-import time
 
 async def well_create(
     well_name: str,
@@ -88,9 +86,9 @@ async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
     if return_trajectory:
         transparent_trajectory: np.ndarray = np.array([[i['x'], i['y'], i['z']] for i in query]).T
         result['MD'] = query[0]['md']
-        result['X'] = transparent_trajectory[0]
-        result['Y'] = transparent_trajectory[1]
-        result['Z'] = transparent_trajectory[2]
+        result['X'] = transparent_trajectory[0].tolist()
+        result['Y'] = transparent_trajectory[1].tolist()
+        result['Z'] = transparent_trajectory[2].tolist()
 
     return result
 
