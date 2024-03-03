@@ -13,45 +13,95 @@ CREATE DATABASE bnipi_v2
     IS_TEMPLATE = False;
 
 
--- Table: public.well
-
-DROP TABLE IF EXISTS public.well;
+-- Table: well
 
 CREATE TABLE IF NOT EXISTS public.well
 (
-    pk_id uuid NOT NULL,
-    name character varying(64) COLLATE pg_catalog."default" NOT NULL,
-    head point NOT NULL,
+    pk_id UUID NOT NULL,
+    name CHARACTER VARYING(64) NOT NULL,
+    head POINT NOT NULL,
     CONSTRAINT well_pkey PRIMARY KEY (pk_id),
     CONSTRAINT well_name_key UNIQUE (name)
 )
 
-TABLESPACE pg_default;
 
-ALTER TABLE IF EXISTS public.well
-    OWNER to postgres;
+-- Table: trajectory
 
-
--- Table: public.trajectory
-
-DROP TABLE IF EXISTS public.trajectory;
-
-CREATE TABLE IF NOT EXISTS public.trajectory
+CREATE TABLE IF NOT EXISTS trajectory
 (
-    pk_id bigint NOT NULL DEFAULT nextval('trajectory_pk_id_seq'::regclass),
-    md double precision NOT NULL,
-    x double precision NOT NULL,
-    y double precision NOT NULL,
-    z double precision NOT NULL,
-    fk_well_id uuid NOT NULL,
-    CONSTRAINT trajectory_pkey PRIMARY KEY (pk_id),
-    CONSTRAINT trajectory_fk_well_id_fkey FOREIGN KEY (fk_well_id)
-        REFERENCES public.well (pk_id) MATCH SIMPLE
+	fk_well_id UUID,
+	md DOUBLE PRECISION NOT NULL,
+	x DOUBLE PRECISION NOT NULL,
+	y DOUBLE PRECISION NOT NULL,
+	z DOUBLE PRECISION NOT NULL,
+	CONSTRAINT fk_well_id
+		FOREIGN KEY (fk_well_id)
+        REFERENCES well (pk_id) MATCH SIMPLE
         ON UPDATE CASCADE
         ON DELETE CASCADE
+) PARTITION BY LIST (fk_well_id);
+
+
+
+-- Procedure: insert_well
+
+CREATE OR REPLACE FUNCTION insert_well(
+	well_name CHARACTER VARYING(64),
+	well_head POINT,
+	md DOUBLE PRECISION[],
+	x DOUBLE PRECISION[],
+	y DOUBLE PRECISION[],
+	z DOUBLE PRECISION[]
 )
+RETURNS UUID
+AS $$
+DECLARE
+	well_uuid UUID := gen_random_uuid();
+	trajectory_table_name TEXT := 'trajectory_' || well_name;
+	l_sql TEXT;
+BEGIN
 
-TABLESPACE pg_default;
+INSERT INTO well (pk_id, name, head)
+VALUES (well_uuid, well_name, well_head);
 
-ALTER TABLE IF EXISTS public.trajectory
-    OWNER to postgres;
+l_sql := format(
+	'CREATE TABLE %I PARTITION OF trajectory FOR VALUES IN (%L)',
+	trajectory_table_name,
+	well_uuid
+);
+EXECUTE l_sql;
+
+INSERT INTO trajectory (fk_well_id, md, x, y, z)
+SELECT well_uuid, zzz.*
+FROM UNNEST(md, x, y, z) as zzz(md, x, y, z);
+
+RETURN well_uuid;
+
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Procedure: delete_well
+
+CREATE OR REPLACE PROCEDURE delete_well(well_uuid UUID)
+AS $$
+DECLARE
+	well_name VARCHAR(64);
+	l_sql TEXT;
+BEGIN
+
+well_name := (SELECT name FROM well WHERE pk_id = well_uuid);
+
+DELETE FROM well
+WHERE pk_id = well_uuid;
+
+l_sql := format(
+	'DROP TABLE %I;',
+	'trajectory_' || well_name
+);
+
+EXECUTE l_sql;
+
+END;
+
+$$ LANGUAGE plpgsql;
