@@ -1,8 +1,10 @@
 from uuid import UUID
+import time
 import numpy as np
 import asyncpg.exceptions as apg_exc
 
 from . import exceptions as exc
+from .utils import fetch_as_dataframe
 from database import db_instance
 
 
@@ -66,30 +68,30 @@ async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
 
     async with pool.acquire() as conn:
         async with conn.transaction():
-            columns: str = 'name, head, md, x, y, z' if return_trajectory else 'name, head'
-            query = await conn.fetch(
+            data = await fetch_as_dataframe(
+                conn,
                 f'''
-                SELECT {columns}
+                SELECT {'name, head, md, x, y, z' if return_trajectory else 'name, head'}
                 FROM well
                 {'JOIN trajectory ON fk_well_id = $1' if return_trajectory else ''}
-                WHERE well.pk_id = $1''',
+                WHERE well.pk_id = $1
+                ''',
                 uuid
             )
 
-    if len(query) == 0:
+    if data.empty:
         raise exc.WellNotFoundException()
     
     result: dict = {
-        'name': query[0]['name'],
-        'head': (query[0]['head'].x, query[0]['head'].y)
+        'name': data['name'][0],
+        'head': (data['head'][0].x, data['head'][0].y)
     }
     
     if return_trajectory:
-        transparent_trajectory: np.ndarray = np.array([[i['md'], i['x'], i['y'], i['z']] for i in query]).T
-        result['MD'] = transparent_trajectory[0].tolist()
-        result['X'] = transparent_trajectory[1].tolist()
-        result['Y'] = transparent_trajectory[2].tolist()
-        result['Z'] = transparent_trajectory[3].tolist()
+        result['MD'] = data['md']
+        result['X'] = data['x']
+        result['Y'] = data['y']
+        result['Z'] = data['z']
 
     return result
 

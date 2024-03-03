@@ -66,8 +66,8 @@ async def get(well: WellGetSchema) -> WellOutputSchema:
         )
     except exc.WellNotFoundException as e:
         output.error = str(e)
-    else:
-        output.data = queried_well
+    # else:
+    #     output.data = queried_well
 
     return output
 
