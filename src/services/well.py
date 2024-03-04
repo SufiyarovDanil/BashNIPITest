@@ -1,4 +1,5 @@
 from uuid import UUID
+
 import numpy as np
 import asyncpg.exceptions as apg_exc
 
@@ -53,44 +54,36 @@ async def well_remove(uuid: UUID) -> None:
 
     async with pool.acquire() as conn:
         async with conn.transaction():
-            stmt = await conn.execute('CALL delete_well($1)', uuid)
-
-    if stmt != 'CALL':
+            deleted: bool = await conn.fetchval('SELECT delete_well($1)', uuid)
+    
+    if not deleted:
         raise exc.WellNotFoundException()
 
 
 async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
     pool = await db_instance.get_connection_pool()
-
+    columns: str = 'name, head, "MD", "X", "Y", "Z"' if return_trajectory else 'name, head'
+    trajectory_subquery: str = '''
+	    , (SELECT array_agg(md) as "MD", array_agg(x) as "X", array_agg(y) as "Y", array_agg(z) as "Z"
+	    FROM trajectory
+	    WHERE fk_well_id = $1)''' if return_trajectory else ''
+    
     async with pool.acquire() as conn:
         async with conn.transaction():
-            # about 30 ms
-            query = await conn.fetch(
+            # about 140 ms
+            query = await conn.fetchrow(
                 f'''
-                SELECT {'name, head, md, x, y, z' if return_trajectory else 'name, head'}
-                FROM well
-                {'JOIN trajectory ON fk_well_id = $1' if return_trajectory else ''}
-                WHERE well.pk_id = $1
+                SELECT {columns}
+                FROM well {trajectory_subquery}
+                WHERE pk_id = $1
                 ''',
                 uuid
             )
 
     if not query:
         raise exc.WellNotFoundException()
-    
-    result: dict = {
-        'name': query[0]['name'],
-        'head': (query[0]['head'].x, query[0]['head'].y)
-    }
-    
-    if return_trajectory:
-        transparent_trajectory: np.ndarray = np.array([[i['x'], i['y'], i['z']] for i in query]).T
-        result['MD'] = query[0]['md']
-        result['X'] = transparent_trajectory[0].tolist()
-        result['Y'] = transparent_trajectory[1].tolist()
-        result['Z'] = transparent_trajectory[2].tolist()
 
-    return result
+    return dict(query)
 
 
 async def well_at(uuid: UUID, md: float) -> tuple[float, float, float]:
