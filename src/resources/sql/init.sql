@@ -114,3 +114,62 @@ RETURN TRUE;
 
 END;
 $$ LANGUAGE plpgsql;
+
+
+-- Function: get_well_with_trajectory
+
+CREATE OR REPLACE FUNCTION get_well_with_trajectory(well_id UUID)
+RETURNS TABLE(
+	"name" CHARACTER VARYING(64),
+	"head" POINT,
+	"MD" DOUBLE PRECISION[],
+	"X" DOUBLE PRECISION[],
+	"Y" DOUBLE PRECISION[],
+	"Z" DOUBLE PRECISION[]
+)
+AS $$
+
+SELECT name, head, "MD", "X", "Y", "Z"
+FROM well, (
+	SELECT ARRAY_AGG(md) as "MD", ARRAY_AGG(x) as "X", ARRAY_AGG(y) as "Y", ARRAY_AGG(z) as "Z"
+	   FROM trajectory
+	   WHERE fk_well_id = well_id
+)
+WHERE pk_id = well_id
+$$ LANGUAGE SQL;
+
+
+-- Function: get_well
+
+CREATE OR REPLACE FUNCTION get_well(well_id UUID)
+RETURNS TABLE (
+	"name" CHARACTER VARYING(64),
+	"head" POINT
+)
+AS $$
+
+SELECT name, head
+FROM well
+WHERE pk_id = well_id
+
+$$ LANGUAGE SQL;
+
+
+-- Prepare: get_well
+
+PREPARE get_well(UUID) AS
+	SELECT name, head
+	FROM well
+	WHERE pk_id = $1
+
+
+-- Prepare: get_well_with_trajectory
+
+PREPARE get_well_with_trajectory(UUID) AS
+	SELECT name, head, "MD", "X", "Y", "Z"
+	FROM well, (
+		SELECT ARRAY_AGG(md) as "MD", ARRAY_AGG(x) as "X", ARRAY_AGG(y) as "Y", ARRAY_AGG(z) as "Z"
+	   	FROM trajectory
+	   	WHERE fk_well_id = $1
+	)
+	WHERE pk_id = $1
