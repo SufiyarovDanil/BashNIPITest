@@ -81,14 +81,22 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- Procedure: delete_well
+-- Function: delete_well
 
-CREATE OR REPLACE PROCEDURE delete_well(well_uuid UUID)
+CREATE OR REPLACE FUNCTION delete_well(well_uuid UUID)
+RETURNS BOOLEAN
 AS $$
 DECLARE
+	is_exists BOOLEAN;
 	well_name VARCHAR(64);
 	l_sql TEXT;
 BEGIN
+
+is_exists := (SELECT COUNT(pk_id) FROM well WHERE pk_id = well_uuid) > 0;
+
+IF NOT is_exists THEN
+	RETURN FALSE;
+END IF;
 
 well_name := (SELECT name FROM well WHERE pk_id = well_uuid);
 
@@ -102,6 +110,7 @@ l_sql := format(
 
 EXECUTE l_sql;
 
-END;
+RETURN TRUE;
 
+END;
 $$ LANGUAGE plpgsql;
