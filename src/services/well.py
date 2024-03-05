@@ -81,36 +81,29 @@ async def well_remove(uuid: UUID) -> None:
 
 async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
     pool = await db_instance.get_connection_pool()
-    start = time.time()
+    columns = 'name, head, "MD", "X", "Y", "Z"' if return_trajectory else 'name, head'
+    trajectory_subquery = f'''
+        , (
+	        SELECT ARRAY_AGG(md) as "MD", ARRAY_AGG(x) as "X", ARRAY_AGG(y) as "Y", ARRAY_AGG(z) as "Z"
+	        FROM trajectory_{uuid.hex}
+        )
+    ''' if return_trajectory else ''
+    sql: str = f'''
+        SELECT {columns}
+            FROM well {trajectory_subquery}
+            WHERE pk_id = $1'''
+    
     async with pool.acquire() as conn:
         async with conn.transaction():
-            query = await conn.fetchrow(
-                'SELECT name, head FROM well WHERE pk_id = $1',
-                uuid
-            )
+            start = time.time()
+            query = await conn.fetchrow(sql, uuid)
+            end = time.time()
+            print(end - start)
 
-            if not query:
-                raise exc.WellNotFoundException()
+    if not query:
+        raise exc.WellNotFoundException()
 
-            if return_trajectory:
-                trajectory = await conn.fetch(f'SELECT * FROM trajectory_{uuid.hex}')
-            
-    print('elapsed time:', time.time() - start)
-
-    
-    result: dict = {
-        'name': query['name'],
-        'head': (query['head'].x, query['head'].y)
-    }
-    
-    if return_trajectory:
-        transparent_trajectory: np.ndarray = np.array([[i['md'], i['x'], i['y'], i['z']] for i in trajectory]).T
-        result['MD'] = transparent_trajectory[0].tolist()
-        result['X'] = transparent_trajectory[1].tolist()
-        result['Y'] = transparent_trajectory[2].tolist()
-        result['Z'] = transparent_trajectory[3].tolist()
-
-    return result
+    return dict(query)
 
 
 async def well_at(uuid: UUID, md: float) -> tuple[float, float, float]:
