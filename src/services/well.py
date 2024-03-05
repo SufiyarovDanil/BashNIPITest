@@ -52,38 +52,28 @@ async def well_remove(uuid: UUID) -> None:
 
     async with pool.acquire() as conn:
         async with conn.transaction():
-            stmt = await conn.execute(
-                'DELETE FROM well WHERE pk_id = $1',
+            is_deleted: bool = await conn.fetchval(
+                'SELECT * FROM delete_well($1)',
                 uuid
             )
 
-            if stmt == 'DELETE 0':
-                raise exc.WellNotFoundException()
-            
-            await conn.execute(f'DROP TABLE trajectory_{uuid.hex}')
-            
+    if not is_deleted:
+        raise exc.WellNotFoundException()
 
 
 async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
     pool = await db_instance.get_connection_pool()
-    # columns = 'name, head, "MD", "X", "Y", "Z"' if return_trajectory else 'name, head'
-    # trajectory_subquery = f'''
-    #     , (
-	#         SELECT ARRAY_AGG(md) as "MD", ARRAY_AGG(x) as "X", ARRAY_AGG(y) as "Y", ARRAY_AGG(z) as "Z"
-	#         FROM trajectory_{uuid.hex}
-    #     )
-    # ''' if return_trajectory else ''
-    # sql: str = f'''
-    #     SELECT {columns}
-    #         FROM well {trajectory_subquery}
-    #         WHERE pk_id = $1'''
-    
+    columns: str = 'name, head, md as "MD", x as "X", y as "Y", z as "Z"' if return_trajectory else 'name, head'
+
     async with pool.acquire() as conn:
         async with conn.transaction():
-            start = time.time()
-            query = await conn.fetchrow('SELECT * FROM get_well_with_trajectory($1)', uuid)
-            end = time.time()
-            print(end - start)
+            # about 90 ms
+            query = await conn.fetchrow(
+                f'''SELECT {columns}
+                FROM well
+                WHERE pk_id = $1''',
+                uuid
+            )
 
     if not query:
         raise exc.WellNotFoundException()
