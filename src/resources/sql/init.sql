@@ -15,43 +15,92 @@ CREATE DATABASE bnipi_v2
 
 -- Table: public.well
 
-DROP TABLE IF EXISTS public.well;
-
-CREATE TABLE IF NOT EXISTS public.well
+CREATE TABLE IF NOT EXISTS well
 (
-    pk_id uuid NOT NULL,
-    name character varying(64) COLLATE pg_catalog."default" NOT NULL,
-    head point NOT NULL,
+	pk_id UUID NOT NULL,
+    name CHARACTER VARYING(32) NOT NULL,
+    head POINT NOT NULL,
+	trajectory_table_name CHARACTER VARYING(45) NOT NULL,
     CONSTRAINT well_pkey PRIMARY KEY (pk_id),
     CONSTRAINT well_name_key UNIQUE (name)
 )
 
-TABLESPACE pg_default;
 
-ALTER TABLE IF EXISTS public.well
-    OWNER to postgres;
-
-
--- Table: public.trajectory
-
-DROP TABLE IF EXISTS public.trajectory;
-
-CREATE TABLE IF NOT EXISTS public.trajectory
-(
-    pk_id bigint NOT NULL DEFAULT nextval('trajectory_pk_id_seq'::regclass),
-    md double precision NOT NULL,
-    x double precision NOT NULL,
-    y double precision NOT NULL,
-    z double precision NOT NULL,
-    fk_well_id uuid NOT NULL,
-    CONSTRAINT trajectory_pkey PRIMARY KEY (pk_id),
-    CONSTRAINT trajectory_fk_well_id_fkey FOREIGN KEY (fk_well_id)
-        REFERENCES public.well (pk_id) MATCH SIMPLE
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
+CREATE OR REPLACE FUNCTION insert_well(
+	well_name CHARACTER VARYING,
+	well_head POINT,
+	md DOUBLE PRECISION[],
+	x DOUBLE PRECISION[],
+	y DOUBLE PRECISION[],
+	z DOUBLE PRECISION[]
 )
+RETURNS UUID
+AS $$
+DECLARE
+	well_uuid UUID := gen_random_uuid();
+	trajectory_table_name TEXT := 'trajectory' || well_name;
+BEGIN
 
-TABLESPACE pg_default;
+INSERT INTO well (pk_id, name, head, trajectory_table_name)
+VALUES (well_uuid, well_name, well_head, trajectory_table_name);
 
-ALTER TABLE IF EXISTS public.trajectory
-    OWNER to postgres;
+EXECUTE FORMAT(
+	'CREATE TABLE %I
+	(
+    	md double precision NOT NULL,
+    	x double precision NOT NULL,
+    	y double precision NOT NULL,
+    	z double precision NOT NULL
+	)',
+	trajectory_table_name
+);
+
+EXECUTE FORMAT(
+	'INSERT INTO %I (md, x, y, z)
+	SELECT * FROM UNNEST(
+	%L::DOUBLE PRECISION[],
+	%L::DOUBLE PRECISION[],
+	%L::DOUBLE PRECISION[],
+	%L::DOUBLE PRECISION[]
+	)
+	AS zzz("MD", "X", "Y", "Z")',
+	trajectory_table_name,
+	md, x, y, z);
+
+RETURN well_uuid;
+
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION get_well_with_trajectory(well_id uuid)
+RETURNS TABLE(
+	"name" CHARACTER VARYING(32),
+	"head" POINT,
+	"MD" DOUBLE PRECISION[],
+	"X" DOUBLE PRECISION[],
+	"Y" DOUBLE PRECISION[],
+	"Z" DOUBLE PRECISION[]
+)
+AS $$
+DECLARE
+	traj_table_name CHARACTER VARYING;
+BEGIN
+
+traj_table_name := (SELECT trajectory_table_name FROM well WHERE pk_id = well_id);
+
+RETURN QUERY
+	EXECUTE FORMAT(
+	'
+	SELECT well.name, well.head, md, x, y, z
+	FROM well, (
+		SELECT ARRAY_AGG(md) as md, ARRAY_AGG(x) as x, ARRAY_AGG(y) as y, ARRAY_AGG(z) as z 
+		FROM %I
+	)
+	WHERE pk_id = %L
+	',
+	traj_table_name,
+	well_id
+	);
+END;
+$$ LANGUAGE plpgsql;

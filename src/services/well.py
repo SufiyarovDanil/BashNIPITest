@@ -25,36 +25,21 @@ async def well_create(
     async with pool.acquire() as conn:
         async with conn.transaction():
             try:
-                await conn.execute(
-                    'INSERT INTO well(pk_id, name, head) VALUES (gen_random_uuid(), $1, $2)',
-                    well_name,
-                    well_head
-                )
-
                 well_id: UUID = await conn.fetchval(
-                    'SELECT pk_id FROM well WHERE name = $1',
-                    well_name
-                )
-
-                trajectory_data = [(i[0], i[1], i[2], i[3]) for i in np.column_stack((md, x, y, z))]
-
-                await conn.execute(
-                    f'''
-                    CREATE TABLE trajectory_{well_id.hex}
-                    (
-                        pk_id bigserial,
-                        md double precision NOT NULL,
-                        x double precision NOT NULL,
-                        y double precision NOT NULL,
-                        z double precision NOT NULL,
-                        PRIMARY KEY (pk_id)
-                    )
-                    '''
-                )
-
-                await conn.executemany(
-                    f'INSERT INTO trajectory_{well_id.hex}(md, x, y, z) VALUES ($1, $2, $3, $4)',
-                    trajectory_data
+                    '''SELECT insert_well(
+                        $1,
+                        $2,
+                        $3::DOUBLE PRECISION[],
+                        $4::DOUBLE PRECISION[],
+                        $5::DOUBLE PRECISION[],
+                        $6::DOUBLE PRECISION[]
+                    )''',
+                    well_name,
+                    well_head,
+                    md,
+                    x,
+                    y,
+                    z
                 )
             except apg_exc.UniqueViolationError:
                 raise exc.WellAlreadyExistsException()
@@ -81,22 +66,22 @@ async def well_remove(uuid: UUID) -> None:
 
 async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
     pool = await db_instance.get_connection_pool()
-    columns = 'name, head, "MD", "X", "Y", "Z"' if return_trajectory else 'name, head'
-    trajectory_subquery = f'''
-        , (
-	        SELECT ARRAY_AGG(md) as "MD", ARRAY_AGG(x) as "X", ARRAY_AGG(y) as "Y", ARRAY_AGG(z) as "Z"
-	        FROM trajectory_{uuid.hex}
-        )
-    ''' if return_trajectory else ''
-    sql: str = f'''
-        SELECT {columns}
-            FROM well {trajectory_subquery}
-            WHERE pk_id = $1'''
+    # columns = 'name, head, "MD", "X", "Y", "Z"' if return_trajectory else 'name, head'
+    # trajectory_subquery = f'''
+    #     , (
+	#         SELECT ARRAY_AGG(md) as "MD", ARRAY_AGG(x) as "X", ARRAY_AGG(y) as "Y", ARRAY_AGG(z) as "Z"
+	#         FROM trajectory_{uuid.hex}
+    #     )
+    # ''' if return_trajectory else ''
+    # sql: str = f'''
+    #     SELECT {columns}
+    #         FROM well {trajectory_subquery}
+    #         WHERE pk_id = $1'''
     
     async with pool.acquire() as conn:
         async with conn.transaction():
             start = time.time()
-            query = await conn.fetchrow(sql, uuid)
+            query = await conn.fetchrow('SELECT * FROM get_well_with_trajectory($1)', uuid)
             end = time.time()
             print(end - start)
 
