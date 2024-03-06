@@ -1,8 +1,8 @@
--- Database: bnipi_v2
+-- Database: bnipi_v4
 
-DROP DATABASE IF EXISTS bnipi_v3;
+DROP DATABASE IF EXISTS bnipi_v4;
 
-CREATE DATABASE bnipi_v3
+CREATE DATABASE bnipi_v4
     WITH
     OWNER = postgres
     ENCODING = 'UTF8'
@@ -13,20 +13,13 @@ CREATE DATABASE bnipi_v3
     IS_TEMPLATE = False;
 
 
--- Table: well
+-- TABLE: well_names
 
-CREATE TABLE IF NOT EXISTS well
+CREATE TABLE IF NOT EXISTS well_names
 (
-	pk_id UUID,
-	name CHARACTER VARYING(32) NOT NULL,
-	head POINT NOT NULL,
-	md DOUBLE PRECISION[] NOT NULL,
-	x DOUBLE PRECISION[] NOT NULL,
-	y DOUBLE PRECISION[] NOT NULL,
-	z DOUBLE PRECISION[] NOT NULL,
-	CONSTRAINT well_pkey PRIMARY KEY (pk_id),
-	CONSTRAINT well_name_key UNIQUE (name, pk_id)
-) PARTITION BY LIST (pk_id);
+	well_name CHARACTER VARYING(32) NOT NULL,
+	CONSTRAINT unique_name UNIQUE (well_name)
+)
 
 
 -- Procedure: insert_well
@@ -45,14 +38,23 @@ DECLARE
 	well_uuid UUID := gen_random_uuid();
 BEGIN
 
-EXECUTE FORMAT(
-	'CREATE TABLE %I PARTITION OF well FOR VALUES IN (%L)',
-	'well_' || well_name,
-	well_uuid
-);
+EXECUTE
+	'CREATE TABLE well_' || REPLACE(well_uuid::TEXT, '-', '')::CHARACTER VARYING ||
+	'(
+		pk_id UUID NOT NULL,
+		name CHARACTER VARYING(32) NOT NULL,
+		head POINT NOT NULL,
+		md DOUBLE PRECISION[] NOT NULL,
+		x DOUBLE PRECISION[] NOT NULL,
+		y DOUBLE PRECISION[] NOT NULL,
+		z DOUBLE PRECISION[] NOT NULL
+	)';
 
-INSERT INTO well (pk_id, name, head, md, x, y, z)
-VALUES (well_uuid, well_name, well_head, md, x, y, z);
+EXECUTE 'INSERT INTO well_' || REPLACE(well_uuid::TEXT, '-', '')::CHARACTER VARYING ||
+		' VALUES ($1, $2, $3, $4, $5, $6, $7)'
+USING well_uuid, well_name, well_head, md, x, y, z;
+
+INSERT INTO well_names VALUES (well_name);
 
 RETURN well_uuid;
 
@@ -67,65 +69,22 @@ RETURNS BOOLEAN
 AS $$
 DECLARE
 	is_exists BOOLEAN;
-	well_name VARCHAR(32);
+	well_table_name TEXT;
 BEGIN
 
-is_exists := (SELECT COUNT(pk_id) FROM well WHERE pk_id = well_uuid) > 0;
+well_table_name := 'well_' || REPLACE(well_uuid::TEXT, '-', '');
+is_exists := (SELECT EXISTS (
+   SELECT FROM information_schema.tables 
+   WHERE table_name = well_table_name
+));
 
 IF NOT is_exists THEN
 	RETURN FALSE;
 END IF;
 
-well_name := (SELECT name FROM well WHERE pk_id = well_uuid);
-
-DELETE FROM well
-WHERE pk_id = well_uuid;
-
-EXECUTE FORMAT(
-	'DROP TABLE %I;',
-	'well_' || well_name
-);
+EXECUTE 'DROP TABLE ' || well_table_name;
 
 RETURN TRUE;
 
 END;
 $$ LANGUAGE plpgsql;
-
-
--- Function: get_well_with_trajectory
-
-CREATE OR REPLACE FUNCTION get_well_with_trajectory(well_id UUID)
-RETURNS TABLE(
-	"name" CHARACTER VARYING(64),
-	"head" POINT,
-	"MD" DOUBLE PRECISION[],
-	"X" DOUBLE PRECISION[],
-	"Y" DOUBLE PRECISION[],
-	"Z" DOUBLE PRECISION[]
-)
-AS $$
-
-SELECT name, head, "MD", "X", "Y", "Z"
-FROM well, (
-	SELECT ARRAY_AGG(md) as "MD", ARRAY_AGG(x) as "X", ARRAY_AGG(y) as "Y", ARRAY_AGG(z) as "Z"
-	   FROM trajectory
-	   WHERE fk_well_id = well_id
-)
-WHERE pk_id = well_id
-$$ LANGUAGE SQL;
-
-
--- Function: get_well
-
-CREATE OR REPLACE FUNCTION get_well(well_id UUID)
-RETURNS TABLE (
-	"name" CHARACTER VARYING(64),
-	"head" POINT
-)
-AS $$
-
-SELECT name, head
-FROM well
-WHERE pk_id = well_id
-
-$$ LANGUAGE SQL;
