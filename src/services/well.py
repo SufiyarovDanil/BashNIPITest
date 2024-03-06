@@ -1,7 +1,7 @@
 from uuid import UUID
+
 import numpy as np
 import asyncpg.exceptions as apg_exc
-import time
 
 from . import exceptions as exc
 from database import db_instance
@@ -67,13 +67,13 @@ async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
 
     async with pool.acquire() as conn:
         async with conn.transaction():
-            # about 90 ms
-            query = await conn.fetchrow(
-                f'''SELECT {columns}
-                FROM well
-                WHERE pk_id = $1''',
-                uuid
-            )
+            try:
+                query = await conn.fetchrow(
+                    f'''SELECT {columns}
+                    FROM well_{uuid.hex}'''
+                )
+            except apg_exc.UndefinedTableError:
+                raise exc.WellNotFoundException()
 
     if not query:
         raise exc.WellNotFoundException()
@@ -82,10 +82,28 @@ async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
 
 
 async def well_at(uuid: UUID, md: float) -> tuple[float, float, float]:
-    well: dict = await well_get(uuid, True)
+    pool = await db_instance.get_connection_pool()
 
-    x: float = np.interp([md], well['MD'], well['X'])[0]
-    y: float = np.interp([md], well['MD'], well['Y'])[0]
-    z: float = np.interp([md], well['MD'], well['Z'])[0]
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            try:
+                well_trajectory = await conn.fetchrow(
+                    f'''
+                    SELECT md, x, y, z
+                    FROM well_{uuid.hex}
+                    '''
+                )
+            except apg_exc.UndefinedTableError:
+                raise exc.WellNotFoundException()
+    
+    if not well_trajectory:
+        raise exc.WellNotFoundException()
+
+    md_array: np.ndarray = np.asarray(well_trajectory['md'])
+    md_value: np.ndarray = np.asarray([md])
+
+    x: float = np.interp(md_value, md_array, np.asarray(well_trajectory['x']))[0]
+    y: float = np.interp(md_value, md_array, np.asarray(well_trajectory['y']))[0]
+    z: float = np.interp(md_value, md_array, np.asarray(well_trajectory['z']))[0]
 
     return (x, y, z)
