@@ -33,11 +33,9 @@ async def create(well: WellCreateSchema) -> WellOutputSchema:
             well.params.Y,
             well.params.Z
         )
-    except exc.WellAlreadyExistsException as e:
-        output.error = str(e)
-    except exc.ArrayDifferentSizesException as e:
-        output.error = str(e)
-    except exc.InconsistentHeadAndFirstNodeException as e:
+    except (exc.WellAlreadyExistsException,
+            exc.ArrayDifferentSizesException,
+            exc.InconsistentHeadAndFirstNodeException) as e:
         output.error = str(e)
     else:
         output.data = {'uuid': str(created_well_uuid)}

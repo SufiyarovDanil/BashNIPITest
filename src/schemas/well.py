@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, UUID4, computed_field
-from typing import Any, Sequence
+from typing import Any
 
 
 class WellSchema(BaseModel):
@@ -14,10 +14,10 @@ class WellCreateSchema(WellSchema):
         name: str = Field(default='well_name', min_length=1)
         head: tuple[float, float] = Field(default=(0.0, 0.0),
                                           min_length=2, max_length=2)
-        MD: Sequence = Field(default=[0.0, 0.0], min_length=1)
-        X: Sequence = Field(default=[0.0, 0.0], min_length=1)
-        Y: Sequence = Field(default=[0.0, 0.0], min_length=1)
-        Z: Sequence = Field(default=[0.0, 0.0], min_length=1)
+        MD: list[float] = Field(default=[0.0, 0.0], min_length=1)
+        X: list[float] = Field(default=[0.0, 0.0], min_length=1)
+        Y: list[float] = Field(default=[0.0, 0.0], min_length=1)
+        Z: list[float] = Field(default=[0.0, 0.0], min_length=1)
     
     params: WellCreateParamsSchema
 
