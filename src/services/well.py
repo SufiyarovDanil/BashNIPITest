@@ -100,10 +100,9 @@ async def well_at(uuid: UUID, md: float) -> tuple[float, float, float]:
         raise exc.WellNotFoundException()
 
     md_array: np.ndarray = np.asarray(well_trajectory['md'])
-    md_value: np.ndarray = np.asarray([md])
 
-    x: float = np.interp(md_value, md_array, np.asarray(well_trajectory['x']))[0]
-    y: float = np.interp(md_value, md_array, np.asarray(well_trajectory['y']))[0]
-    z: float = np.interp(md_value, md_array, np.asarray(well_trajectory['z']))[0]
+    x: float = np.interp(md, md_array, well_trajectory['x'])
+    y: float = np.interp(md, md_array, well_trajectory['y'])
+    z: float = np.interp(md, md_array, well_trajectory['z'])
 
-    return (x, y, z)
+    return x, y, z
