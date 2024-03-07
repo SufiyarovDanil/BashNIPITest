@@ -9,8 +9,9 @@ class WellSchema(BaseModel):
 
 class WellCreateSchema(WellSchema):
     class WellCreateParamsSchema(BaseModel):
-        name: str
-        head: tuple[float, float] = Field(default=(0.0, 0.0), min_length=2, max_length=2)
+        name: str = Field(default='well_name', min_length=1)
+        head: tuple[float, float] = Field(default=(0.0, 0.0),
+                                          min_length=2, max_length=2)
         MD: Sequence = Field(default=[0.0, 0.0], min_length=1)
         X: Sequence = Field(default=[0.0, 0.0], min_length=1)
         Y: Sequence = Field(default=[0.0, 0.0], min_length=1)
@@ -21,23 +22,23 @@ class WellCreateSchema(WellSchema):
 
 class WellRemoveSchema(WellSchema):
     class WellRemoveParamsSchema(BaseModel):
-        uuid: UUID4
+        uuid: UUID4 = Field(default=UUID4())
     
     params: WellRemoveParamsSchema
 
 
 class WellGetSchema(WellSchema):
     class WellGetParamsSchema(BaseModel):
-        uuid: UUID4
-        return_trajectory: bool
+        uuid: UUID4 = Field(default=UUID4())
+        return_trajectory: bool = Field(default=False)
     
     params: WellGetParamsSchema
 
 
 class WellAtSchema(WellSchema):
     class WellGetParamsSchema(BaseModel):
-        uuid: UUID4
-        MD: float
+        uuid: UUID4 = Field(default=UUID4())
+        MD: float = Field()
     
     params: WellGetParamsSchema
 
@@ -45,7 +46,9 @@ class WellAtSchema(WellSchema):
 class WellOutputSchema(BaseModel):
     data: dict[str, Any] | None = Field(default=None)
 
-    def __init__(self, data: dict[str, Any] | None = None, error: dict[str, str] | None = None):
+    def __init__(self,
+                 data: dict[str, Any] | None = None,
+                 error: dict[str, str] | None = None):
         super().__init__(data=data, error=error)
         self.data = data
         self.error = error
@@ -57,4 +60,4 @@ class WellOutputSchema(BaseModel):
     
     @error.setter
     def error(self, value: str | None) -> None:
-        self._error = value if value is None else { 'message': value }
+        self._error = value if value is None else {'message': value}

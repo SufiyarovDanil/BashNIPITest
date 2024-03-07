@@ -1,4 +1,6 @@
-import numpy as np
+from typing import Any
+from uuid import UUID
+
 from fastapi import APIRouter
 
 from schemas.well import (
@@ -23,13 +25,13 @@ async def create(well: WellCreateSchema) -> WellOutputSchema:
     output: WellOutputSchema = WellOutputSchema(data=None, error=None)
 
     try:
-        created_well_uuid = await well_services.well_create(
+        created_well_uuid: UUID = await well_services.well_create(
             well.params.name,
-            np.float32(well.params.head),
-            np.array(well.params.MD, dtype=np.float32),
-            np.array(well.params.X, dtype=np.float32),
-            np.array(well.params.Y, dtype=np.float32),
-            np.array(well.params.Z, dtype=np.float32)
+            well.params.head,
+            well.params.MD,
+            well.params.X,
+            well.params.Y,
+            well.params.Z
         )
     except exc.WellAlreadyExistsException as e:
         output.error = str(e)
@@ -38,14 +40,14 @@ async def create(well: WellCreateSchema) -> WellOutputSchema:
     except exc.InconsistentHeadAndFirstNodeException as e:
         output.error = str(e)
     else:
-        output.data = { 'uuid': str(created_well_uuid) }
+        output.data = {'uuid': str(created_well_uuid)}
 
     return output
 
 
 @router.post('/well.remove')
 async def remove(well: WellRemoveSchema) -> WellOutputSchema:
-    output: WellOutputSchema = WellOutputSchema(data=None, error=None)
+    output: WellOutputSchema = WellOutputSchema()
 
     try:
         await well_services.well_remove(well.params.uuid)
@@ -60,7 +62,7 @@ async def get(well: WellGetSchema) -> WellOutputSchema:
     output: WellOutputSchema = WellOutputSchema(data=None, error=None)
 
     try:
-        queried_well = await well_services.well_get(
+        queried_well: dict[str, Any] = await well_services.well_get(
             well.params.uuid,
             well.params.return_trajectory
         )
@@ -74,7 +76,7 @@ async def get(well: WellGetSchema) -> WellOutputSchema:
 
 @router.post('/well.at')
 async def at(well: WellAtSchema) -> WellOutputSchema:
-    output: WellOutputSchema = WellOutputSchema(data=None, error=None)
+    output: WellOutputSchema = WellOutputSchema()
     
     try:
         coordinates: tuple[float, float, float] = await well_services.well_at(
