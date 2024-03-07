@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from pydantic import BaseModel, Field, UUID4, computed_field
 from typing import Any, Sequence
 
@@ -22,14 +24,14 @@ class WellCreateSchema(WellSchema):
 
 class WellRemoveSchema(WellSchema):
     class WellRemoveParamsSchema(BaseModel):
-        uuid: UUID4 = Field(default=UUID4())
+        uuid: UUID4 = Field(default=uuid4())
     
     params: WellRemoveParamsSchema
 
 
 class WellGetSchema(WellSchema):
     class WellGetParamsSchema(BaseModel):
-        uuid: UUID4 = Field(default=UUID4())
+        uuid: UUID4 = Field(default=uuid4())
         return_trajectory: bool = Field(default=False)
     
     params: WellGetParamsSchema
@@ -37,7 +39,7 @@ class WellGetSchema(WellSchema):
 
 class WellAtSchema(WellSchema):
     class WellGetParamsSchema(BaseModel):
-        uuid: UUID4 = Field(default=UUID4())
+        uuid: UUID4 = Field(default=uuid4())
         MD: float = Field()
     
     params: WellGetParamsSchema
