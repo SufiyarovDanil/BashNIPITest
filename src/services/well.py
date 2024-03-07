@@ -2,7 +2,7 @@ from uuid import UUID
 import numpy as np
 import asyncpg.exceptions as apg_exc
 
-from . import exceptions as exc
+import services.exceptions as exc
 from database import make_apg_connection
 
 
