@@ -69,6 +69,7 @@ RETURNS BOOLEAN
 AS $$
 DECLARE
 	is_exists BOOLEAN;
+	well_name_to_delete TEXT;
 	well_table_name TEXT;
 BEGIN
 
@@ -81,6 +82,12 @@ is_exists := (SELECT EXISTS (
 IF NOT is_exists THEN
 	RETURN FALSE;
 END IF;
+
+EXECUTE 'SELECT name FROM ' || well_table_name || ' WHERE pk_id = $1'
+INTO well_name_to_delete
+USING well_uuid;
+
+DELETE FROM well_names WHERE well_name = well_name_to_delete;
 
 EXECUTE 'DROP TABLE ' || well_table_name;
 
