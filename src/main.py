@@ -5,7 +5,7 @@ from endpoints.well import router as well_router
 
 app: FastAPI = FastAPI(
     title='Well API',
-    swagger_ui_parameters={ 'displayRequestDuration': True }
+    swagger_ui_parameters={'displayRequestDuration': True}
 )
 
 app.include_router(well_router)
