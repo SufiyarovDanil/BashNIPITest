@@ -3,23 +3,22 @@ from uuid import UUID
 import numpy as np
 import asyncpg.exceptions as apg_exc
 
-from . import exceptions as exc
+import exceptions as exc
 from database import db_instance
 
 
 async def well_create(
-    well_name: str,
-    well_head: tuple[np.float32, np.float32],
-    md: np.ndarray[np.float32],
-    x: np.ndarray[np.float32],
-    y: np.ndarray[np.float32],
-    z: np.ndarray[np.float32]
-) -> UUID:
+        well_name: str,
+        well_head: tuple[np.float32, np.float32],
+        md: np.ndarray[np.float32],
+        x: np.ndarray[np.float32],
+        y: np.ndarray[np.float32],
+        z: np.ndarray[np.float32]) -> UUID:
     if not (md.size == x.size == y.size == z.size):
         raise exc.ArrayDifferentSizesException()
     if well_head[0] != x[0] or well_head[1] != y[0]:
         raise exc.InconsistentHeadAndFirstNodeException()
-    
+
     pool = await db_instance.get_connection_pool()
 
     async with pool.acquire() as conn:
@@ -55,7 +54,7 @@ async def well_remove(uuid: UUID) -> None:
     async with pool.acquire() as conn:
         async with conn.transaction():
             deleted: bool = await conn.fetchval('SELECT delete_well($1)', uuid)
-    
+
     if not deleted:
         raise exc.WellNotFoundException()
 
@@ -64,10 +63,10 @@ async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
     pool = await db_instance.get_connection_pool()
     columns: str = 'name, head, "MD", "X", "Y", "Z"' if return_trajectory else 'name, head'
     trajectory_subquery: str = '''
-	    , (SELECT array_agg(md) as "MD", array_agg(x) as "X", array_agg(y) as "Y", array_agg(z) as "Z"
-	    FROM trajectory
-	    WHERE fk_well_id = $1)''' if return_trajectory else ''
-    
+        , (SELECT array_agg(md) as "MD", array_agg(x) as "X", array_agg(y) as "Y", array_agg(z) as "Z"
+        FROM trajectory
+        WHERE fk_well_id = $1)''' if return_trajectory else ''
+
     async with pool.acquire() as conn:
         async with conn.transaction():
             # about 140 ms
@@ -89,8 +88,8 @@ async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
 async def well_at(uuid: UUID, md: float) -> tuple[float, float, float]:
     well: dict = await well_get(uuid, True)
 
-    x: float = np.interp([md], well['MD'], well['X'])[0]
-    y: float = np.interp([md], well['MD'], well['Y'])[0]
-    z: float = np.interp([md], well['MD'], well['Z'])[0]
+    x: float = float(np.interp([md], well['MD'], well['X'])[0])
+    y: float = float(np.interp([md], well['MD'], well['Y'])[0])
+    z: float = float(np.interp([md], well['MD'], well['Z'])[0])
 
-    return (x, y, z)
+    return x, y, z

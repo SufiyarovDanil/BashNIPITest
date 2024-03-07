@@ -1,13 +1,7 @@
+from config import DB_NAME, DB_HOST, DB_PASS, DB_PORT, DB_USER
+
 import asyncpg
 from asyncpg.connection import Connection
-
-from config import (
-    DB_NAME,
-    DB_HOST,
-    DB_PASS,
-    DB_PORT,
-    DB_USER
-)
 
 
 async def make_apg_connection() -> Connection:

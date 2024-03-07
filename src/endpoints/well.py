@@ -11,7 +11,6 @@ from schemas.well import (
 import services.well as well_services
 import services.exceptions as exc
 
-
 router: APIRouter = APIRouter(
     prefix='/api',
     tags=['Well']
@@ -26,10 +25,10 @@ async def create(well: WellCreateSchema) -> WellOutputSchema:
         created_well_uuid = await well_services.well_create(
             well.params.name,
             np.float32(well.params.head),
-            np.array(well.params.MD, dtype=np.float32),
-            np.array(well.params.X, dtype=np.float32),
-            np.array(well.params.Y, dtype=np.float32),
-            np.array(well.params.Z, dtype=np.float32)
+            np.asarray(well.params.MD, dtype=np.float32),
+            np.asarray(well.params.X, dtype=np.float32),
+            np.asarray(well.params.Y, dtype=np.float32),
+            np.asarray(well.params.Z, dtype=np.float32)
         )
     except exc.WellAlreadyExistsException as e:
         output.error = str(e)
@@ -38,7 +37,7 @@ async def create(well: WellCreateSchema) -> WellOutputSchema:
     except exc.InconsistentHeadAndFirstNodeException as e:
         output.error = str(e)
     else:
-        output.data = { 'uuid': str(created_well_uuid) }
+        output.data = {'uuid': str(created_well_uuid)}
 
     return output
 
@@ -51,7 +50,7 @@ async def remove(well: WellRemoveSchema) -> WellOutputSchema:
         await well_services.well_remove(well.params.uuid)
     except exc.WellNotFoundException as e:
         output.error = str(e)
-    
+
     return output
 
 
@@ -75,7 +74,7 @@ async def get(well: WellGetSchema) -> WellOutputSchema:
 @router.post('/well.at')
 async def at(well: WellAtSchema) -> WellOutputSchema:
     output: WellOutputSchema = WellOutputSchema(data=None, error=None)
-    
+
     try:
         coordinates: tuple[float, float, float] = await well_services.well_at(
             well.params.uuid,
@@ -89,5 +88,5 @@ async def at(well: WellAtSchema) -> WellOutputSchema:
             'Y': coordinates[1],
             'Z': coordinates[2]
         }
-    
+
     return output

@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field, UUID4, computed_field
 from typing import Any, Sequence
+
+from pydantic import BaseModel, Field, UUID4, computed_field
 
 
 class WellSchema(BaseModel):
@@ -15,14 +16,14 @@ class WellCreateSchema(WellSchema):
         X: Sequence = Field(default=[0.0, 0.0], min_length=1)
         Y: Sequence = Field(default=[0.0, 0.0], min_length=1)
         Z: Sequence = Field(default=[0.0, 0.0], min_length=1)
-    
+
     params: WellCreateParamsSchema
 
 
 class WellRemoveSchema(WellSchema):
     class WellRemoveParamsSchema(BaseModel):
         uuid: UUID4
-    
+
     params: WellRemoveParamsSchema
 
 
@@ -30,7 +31,7 @@ class WellGetSchema(WellSchema):
     class WellGetParamsSchema(BaseModel):
         uuid: UUID4
         return_trajectory: bool
-    
+
     params: WellGetParamsSchema
 
 
@@ -38,7 +39,7 @@ class WellAtSchema(WellSchema):
     class WellGetParamsSchema(BaseModel):
         uuid: UUID4
         MD: float
-    
+
     params: WellGetParamsSchema
 
 
@@ -49,12 +50,12 @@ class WellOutputSchema(BaseModel):
         super().__init__(data=data, error=error)
         self.data = data
         self.error = error
-    
+
     @computed_field
     @property
     def error(self) -> dict[str, str] | None:
         return self._error
-    
+
     @error.setter
     def error(self, value: str | None) -> None:
-        self._error = value if value is None else { 'message': value }
+        self._error = value if value is None else {'message': value}
