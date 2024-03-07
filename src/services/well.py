@@ -82,10 +82,23 @@ async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
 
 
 async def well_at(uuid: UUID, md: float) -> tuple[float, float, float]:
-    well: dict = await well_get(uuid, True)
+    pool = await db_instance.get_connection_pool()
 
-    x: float = np.interp([md], well['MD'], well['X'])[0]
-    y: float = np.interp([md], well['MD'], well['Y'])[0]
-    z: float = np.interp([md], well['MD'], well['Z'])[0]
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            # about 90 ms
+            query = await conn.fetchrow(
+                'SELECT md, x, y, z FROM well WHERE pk_id = $1',
+                uuid
+            )
 
-    return (x, y, z)
+    if not query:
+        raise exc.WellNotFoundException()
+    
+    well_md = query['md']
+
+    x: float = np.interp(md, well_md, query['x'])
+    y: float = np.interp(md, well_md, query['y'])
+    z: float = np.interp(md, well_md, query['z'])
+
+    return x, y, z
