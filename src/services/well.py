@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 import numpy as np
@@ -86,10 +87,29 @@ async def well_get(uuid: UUID, return_trajectory: bool = False) -> dict:
 
 
 async def well_at(uuid: UUID, md: float) -> tuple[float, float, float]:
-    well: dict = await well_get(uuid, True)
+    pool = await db_instance.get_connection_pool()
 
-    x: float = float(np.interp([md], well['MD'], well['X'])[0])
-    y: float = float(np.interp([md], well['MD'], well['Y'])[0])
-    z: float = float(np.interp([md], well['MD'], well['Z'])[0])
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            well_trajectory = await conn.fetchrow(
+                f'''
+                SELECT ARRAY_AGG(md) as md, ARRAY_AGG(x) as x, ARRAY_AGG(y) as y, ARRAY_AGG(z) as z
+                FROM trajectory
+                WHERE fk_well_id = $1
+                ''',
+                uuid
+            )
+
+    if not well_trajectory:
+        raise exc.WellNotFoundException()
+
+    well_md: np.ndarray[Any, np.dtype[np.float32]] = np.asarray(
+        well_trajectory['md'],
+        dtype=np.float32
+    )
+
+    x: float = float(np.interp(md, well_md, well_trajectory['x']))
+    y: float = float(np.interp(md, well_md, well_trajectory['y']))
+    z: float = float(np.interp(md, well_md, well_trajectory['z']))
 
     return x, y, z
