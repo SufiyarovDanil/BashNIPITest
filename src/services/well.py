@@ -3,7 +3,6 @@ from uuid import UUID
 
 import asyncpg as apg
 import numpy as np
-import numpy.typing as npt
 import asyncpg.exceptions as apg_exc
 
 import services.exceptions as exc
@@ -13,10 +12,10 @@ from database import db_instance
 async def well_create(
         well_name: str,
         well_head: tuple[float, float],
-        md: npt.ArrayLike[float],
-        x: npt.ArrayLike[float],
-        y: npt.ArrayLike[float],
-        z: npt.ArrayLike[float]) -> UUID:
+        md: list[float],
+        x: list[float],
+        y: list[float],
+        z: list[float]) -> UUID:
     if not (len(md) == len(x) == len(y) == len(z)):
         raise exc.ArrayDifferentSizesException()
 
@@ -35,43 +34,34 @@ async def well_create(
     z_array: np.ndarray[Any, np.dtype[np.float64]] = np.asarray(
         z, dtype=np.float64
     )
-    
-    pool: apg.Pool = await db_instance.get_connection_pool()
 
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            try:
-                well_id: UUID = await conn.fetchval(
-                    '''SELECT insert_well(
-                        $1,
-                        $2,
-                        $3::DOUBLE PRECISION[],
-                        $4::DOUBLE PRECISION[],
-                        $5::DOUBLE PRECISION[],
-                        $6::DOUBLE PRECISION[]
-                    )''',
-                    well_name,
-                    well_head,
-                    md_array,
-                    x_array,
-                    y_array,
-                    z_array
-                )
-            except apg_exc.UniqueViolationError:
-                raise exc.WellAlreadyExistsException()
+    try:
+        well_id: UUID = await db_instance.fetch_val(
+            '''SELECT insert_well(
+                $1,
+                $2,
+                $3::DOUBLE PRECISION[],
+                $4::DOUBLE PRECISION[],
+                $5::DOUBLE PRECISION[],
+                $6::DOUBLE PRECISION[])''',
+            well_name,
+            well_head,
+            md_array,
+            x_array,
+            y_array,
+            z_array
+        )
+    except apg_exc.UniqueViolationError:
+        raise exc.WellAlreadyExistsException()
 
     return well_id
 
 
 async def well_remove(uuid: UUID) -> None:
-    pool: apg.Pool = await db_instance.get_connection_pool()
-
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            is_deleted: bool = await conn.fetchval(
-                'SELECT * FROM delete_well($1)',
-                uuid
-            )
+    is_deleted: bool = await db_instance.fetch_val(
+        'SELECT * FROM delete_well($1)',
+        uuid
+    )
 
     if not is_deleted:
         raise exc.WellNotFoundException()
@@ -79,20 +69,17 @@ async def well_remove(uuid: UUID) -> None:
 
 async def well_get(uuid: UUID,
                    return_trajectory: bool = False) -> dict[str, Any]:
-    pool: apg.Pool = await db_instance.get_connection_pool()
     columns: str = (
         'name, head, md as "MD", x as "X", y as "Y", z as "Z"'
         if return_trajectory else 'name, head'
     )
 
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            try:
-                query: apg.Record | None = await conn.fetchrow(
-                    f'SELECT {columns} FROM well_{uuid.hex}'
-                )
-            except apg_exc.UndefinedTableError:
-                raise exc.WellNotFoundException()
+    try:
+        query: apg.Record | None = await db_instance.fetch_row(
+            f'SELECT {columns} FROM well_{uuid.hex}'
+        )
+    except apg_exc.UndefinedTableError:
+        raise exc.WellNotFoundException()
 
     if not query:
         raise exc.WellNotFoundException()
@@ -101,16 +88,12 @@ async def well_get(uuid: UUID,
 
 
 async def well_at(uuid: UUID, md: float) -> tuple[float, float, float]:
-    pool: apg.Pool = await db_instance.get_connection_pool()
-
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            try:
-                well_trajectory: apg.Record | None = await conn.fetchrow(
-                    f'SELECT md, x, y, z FROM well_{uuid.hex}'
-                )
-            except apg_exc.UndefinedTableError:
-                raise exc.WellNotFoundException()
+    try:
+        well_trajectory: apg.Record | None = await db_instance.fetch_row(
+            f'SELECT md, x, y, z FROM well_{uuid.hex}'
+        )
+    except apg_exc.UndefinedTableError:
+        raise exc.WellNotFoundException()
     
     if not well_trajectory:
         raise exc.WellNotFoundException()
