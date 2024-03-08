@@ -16,6 +16,34 @@ async def make_apg_connection() -> apg.Connection:
 
 
 class Database:
+    """
+    Класс Database является обёрткой над драйвером asyncpg.
+
+    Все взаимодействия с базой данных рекомендуется проводить через
+    неё, так как помимо сокращения количества уровней вложенности в
+    коде за счет автоматической работы с контекстными менеджерами, само
+    приложение подразумевает использование пула подключений, чем эта
+    обёртка и занимается.
+
+    Например:
+
+    Вместо
+    .. code-block:: python
+        async with conn_pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute('''
+                    INSERT INTO my_table (a) VALUES ($1), ($2)
+                ''', 10, 20)
+        INSERT 0 2
+
+    Использовать
+        await db_instance.execute('''
+            INSERT INTO my_table (a) VALUES ($1), ($2)
+            ''', 10, 20)
+        INSERT 0 2
+        ...
+    
+    """
     def __init__(self):
         self._connection_pool = None
     
@@ -28,7 +56,7 @@ class Database:
                 password=DB_PASS,
                 database=DB_NAME,
                 min_size=1,
-                max_size=10
+                max_size=5
             )
         
         return self._connection_pool

@@ -1,3 +1,8 @@
+"""
+Содержит набор схем для различных операций с данными о скважинах.
+
+"""
+
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, UUID4, computed_field

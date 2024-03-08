@@ -1,3 +1,8 @@
+"""
+Кастомные исключения, которые бросаются в функциях сервиса well.
+
+"""
+
 class WellNotFoundException(Exception):
     def __init__(self):
         super().__init__('Well not found!')

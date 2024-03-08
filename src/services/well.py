@@ -1,3 +1,11 @@
+"""
+Содержит функции для работы с данными о скважинах.
+
+В случае возникновения непредвиденных обстоятельств, эти функции
+способны бросать исключения.
+
+"""
+
 from typing import Any
 from uuid import UUID
 
@@ -16,6 +24,12 @@ async def well_create(
         x: list[float],
         y: list[float],
         z: list[float]) -> UUID:
+    """
+    Добавляет новые данные о скважине в БД.
+
+    Параметры md, x, y и z должны иметь одинаковую длину!
+
+    """
     if not (len(md) == len(x) == len(y) == len(z)):
         raise exc.ArrayDifferentSizesException()
 
@@ -69,6 +83,29 @@ async def well_remove(uuid: UUID) -> None:
 
 async def well_get(uuid: UUID,
                    return_trajectory: bool = False) -> dict[str, Any]:
+    """
+    Возвращает словарь с данными об определённой скважине.
+
+    Словарь имеет следующий формат, если параметр
+    return_trajectory == False:
+
+    {
+        'name': 'well_name',
+        'head': (x: float, y: float)
+    }
+
+    В противном случае:
+
+    {
+        'name': 'well_name',
+        'head': (x: float, y: float),
+        'MD': list[float],
+        'X': list[float],
+        'Y': list[float],
+        'Z': list[float],
+    }
+
+    """
     columns: str = (
         'name, head, md as "MD", x as "X", y as "Y", z as "Z"'
         if return_trajectory else 'name, head'
@@ -88,6 +125,11 @@ async def well_get(uuid: UUID,
 
 
 async def well_at(uuid: UUID, md: float) -> tuple[float, float, float]:
+    """
+    Возвращает координаты точки на траектории скважины на заданной
+    глубине md.  
+
+    """
     try:
         well_trajectory: apg.Record | None = await db_instance.fetch_row(
             f'SELECT md, x, y, z FROM well_{uuid.hex}'
