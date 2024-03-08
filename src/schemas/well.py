@@ -75,9 +75,9 @@ class WellGetSchema(WellSchema):
 
     return_trajectory: при значении true вместе с основной информацией
     возвращает координаты точек вместе с "MD".
-
     
     """
+    
     class WellGetParamsSchema(BaseModel):
         uuid: UUID4 = Field()
         return_trajectory: bool = Field(default=False)
