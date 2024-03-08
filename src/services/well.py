@@ -30,6 +30,7 @@ async def well_create(
     Параметры md, x, y и z должны иметь одинаковую длину!
 
     """
+
     if not (len(md) == len(x) == len(y) == len(z)):
         raise exc.ArrayDifferentSizesException()
 
@@ -106,6 +107,7 @@ async def well_get(uuid: UUID,
     }
 
     """
+
     columns: str = (
         'name, head, md as "MD", x as "X", y as "Y", z as "Z"'
         if return_trajectory else 'name, head'
@@ -130,6 +132,7 @@ async def well_at(uuid: UUID, md: float) -> tuple[float, float, float]:
     глубине md.  
 
     """
+    
     try:
         well_trajectory: apg.Record | None = await db_instance.fetch_row(
             f'SELECT md, x, y, z FROM well_{uuid.hex}'
