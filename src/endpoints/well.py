@@ -22,6 +22,11 @@ router: APIRouter = APIRouter(
 
 @router.post('/well.create')
 async def create(well: WellCreateSchema) -> WellOutputSchema:
+    """
+    Добавляет новую информацию о скважине в базу данных.
+
+    """
+
     output: WellOutputSchema = WellOutputSchema(data=None, error=None)
 
     try:
@@ -45,6 +50,12 @@ async def create(well: WellCreateSchema) -> WellOutputSchema:
 
 @router.post('/well.remove')
 async def remove(well: WellRemoveSchema) -> WellOutputSchema:
+    """
+    Запрос, отвечающий за удаление информации о скважине из базы
+    данных.
+
+    """
+
     output: WellOutputSchema = WellOutputSchema()
 
     try:
@@ -57,6 +68,11 @@ async def remove(well: WellRemoveSchema) -> WellOutputSchema:
 
 @router.post('/well.get')
 async def get(well: WellGetSchema) -> WellOutputSchema:
+    """
+    Получение информации о скважине по её идентификатору.
+
+    """
+
     output: WellOutputSchema = WellOutputSchema(data=None, error=None)
 
     try:
@@ -74,6 +90,11 @@ async def get(well: WellGetSchema) -> WellOutputSchema:
 
 @router.post('/well.at')
 async def at(well: WellAtSchema) -> WellOutputSchema:
+    """
+    Получение координат скважины по ее уровню глубины.
+
+    """
+    
     output: WellOutputSchema = WellOutputSchema()
     
     try:
