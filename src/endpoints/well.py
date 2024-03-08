@@ -51,8 +51,7 @@ async def create(well: WellCreateSchema) -> WellOutputSchema:
 @router.post('/well.remove')
 async def remove(well: WellRemoveSchema) -> WellOutputSchema:
     """
-    Запрос, отвечающий за удаление информации о скважине из базы
-    данных.
+    Удаление информации о скважине из базы данных.
 
     """
 
@@ -94,7 +93,7 @@ async def at(well: WellAtSchema) -> WellOutputSchema:
     Получение координат скважины по ее уровню глубины.
 
     """
-    
+
     output: WellOutputSchema = WellOutputSchema()
     
     try:
