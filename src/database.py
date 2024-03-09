@@ -5,16 +5,6 @@ import asyncpg as apg
 from config import DB_NAME, DB_HOST, DB_PASS, DB_PORT, DB_USER
 
 
-async def make_apg_connection() -> apg.Connection:
-    return await apg.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        user=DB_USER,
-        password=DB_PASS,
-        database=DB_NAME
-    )
-
-
 class Database:
     """
     Класс Database является обёрткой над драйвером asyncpg.
@@ -45,17 +35,23 @@ class Database:
     
     """
     
-    def __init__(self):
+    def __init__(self, host: str, port: str, user: str,
+                 password: str, database: str):
+        self._host = host
+        self._port = port
+        self._user = user
+        self._password = password
+        self._database = database
         self._connection_pool = None
     
     async def get_connection_pool(self) -> apg.Pool:
         if not self._connection_pool:
             self._connection_pool = await apg.create_pool(
-                host=DB_HOST,
-                port=DB_PORT,
-                user=DB_USER,
-                password=DB_PASS,
-                database=DB_NAME,
+                host=self._host,
+                port=self._port,
+                user=self._user,
+                password=self._password,
+                database=self._database,
                 min_size=1,
                 max_size=5
             )
@@ -108,4 +104,5 @@ class Database:
         return result
 
 
-db_instance: Database = Database()
+db_instance: Database = Database(DB_HOST, DB_PORT, DB_USER,
+                                 DB_PASS, DB_NAME)
