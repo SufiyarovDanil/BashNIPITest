@@ -1,25 +1,10 @@
--- Database: bnipi_v4
-
-DROP DATABASE IF EXISTS bnipi_v4;
-
-CREATE DATABASE bnipi_v4
-    WITH
-    OWNER = postgres
-    ENCODING = 'UTF8'
-    LC_COLLATE = 'Russian_Russia.1251'
-    LC_CTYPE = 'Russian_Russia.1251'
-    TABLESPACE = pg_default
-    CONNECTION LIMIT = -1
-    IS_TEMPLATE = False;
-
-
 -- TABLE: well_names
 
 CREATE TABLE IF NOT EXISTS well_names
 (
 	well_name CHARACTER VARYING(32) NOT NULL,
 	CONSTRAINT unique_name UNIQUE (well_name)
-)
+);
 
 
 -- Procedure: insert_well
