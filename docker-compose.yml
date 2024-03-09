@@ -1,0 +1,21 @@
+version: "3.7"
+services:
+  well_db:
+    image: postgres:16
+    container_name: well_db
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5432:5432"
+  well_service:
+    container_name: well_service
+    build:
+      context: .
+    env_file:
+      - .env
+    ports:
+      - "8070:8070"
+    depends_on:
+      - well_db
