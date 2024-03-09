@@ -1,5 +1,7 @@
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 
+from endpoints.exception_handlers import validation_exception_handler
 from endpoints.well import router as well_router
 
 
@@ -13,6 +15,10 @@ app: FastAPI = FastAPI(
 )
 
 app.include_router(well_router)
+app.add_exception_handler(
+    RequestValidationError,
+    validation_exception_handler
+)
 
 if __name__ == '__main__':
     import uvicorn
