@@ -27,7 +27,7 @@ async def create(well: WellCreateSchema) -> WellOutputSchema:
 
     """
 
-    output: WellOutputSchema = WellOutputSchema(data=None, error=None)
+    output: WellOutputSchema = WellOutputSchema()
 
     try:
         created_well_uuid: UUID = await well_services.well_create(
@@ -72,7 +72,7 @@ async def get(well: WellGetSchema) -> WellOutputSchema:
 
     """
 
-    output: WellOutputSchema = WellOutputSchema(data=None, error=None)
+    output: WellOutputSchema = WellOutputSchema()
 
     try:
         queried_well: dict[str, Any] = await well_services.well_get(
